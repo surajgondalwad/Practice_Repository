@@ -1,82 +1,105 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import time
+import pickle
+import kagglehub
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="AutoPrice Predictor", page_icon="🚗", layout="centered")
+# -------------------------------
+# Page Config
+# -------------------------------
+st.set_page_config(
+    page_title="Car Price Predictor 🚗",
+    page_icon="🚗",
+    layout="wide"
+)
 
-# --- CUSTOM CSS FOR SMOOTH UI ---
-st.markdown("""
-    <style>
-    .main {
-        background-color: #f5f7f9;
-    }
-    .stButton>button {
-        width: 100%;
-        border-radius: 20px;
-        height: 3em;
-        background-color: #FF4B4B;
-        color: white;
-        transition: 0.3s;
-    }
-    .stButton>button:hover {
-        background-color: #ff3333;
-        border: none;
-    }
-    .prediction-card {
-        padding: 20px;
-        background-color: white;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        text-align: center;
-    }
-    </style>
-    """, unsafe_allow_stdio=True)
+# -------------------------------
+# Load Model
+# -------------------------------
+@st.cache_resource
+def load_model():
+    with open("Practice_Model.pkl", "rb") as file:
+        model = pickle.load(file)
+    return model
 
-# --- HEADER ---
-st.title("🚗 Vehicle Price Predictor")
-st.write("Enter the vehicle specifications below to estimate the market value.")
+model = load_model()
 
-# --- SIDEBAR / INPUTS ---
-with st.container():
-    st.subheader("Vehicle Specifications")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        make = st.selectbox("Brand", ["Toyota", "Honda", "Ford", "BMW", "Audi", "Tesla"])
-        year = st.slider("Year of Manufacture", 2000, 2026, 2020)
-        engine_size = st.number_input("Engine Size (L)", 0.5, 8.0, 2.0)
+# -------------------------------
+# Load Dataset (for reference)
+# -------------------------------
+@st.cache_data
+def load_data():
+    path = kagglehub.dataset_download(
+        "ihasan88/car-price-prediction-and-vehicle-specifications"
+    )
+    df = pd.read_csv(path + "/CarPrice_Assignment.csv")  # adjust if filename differs
+    return df
 
-    with col2:
-        mileage = st.number_input("Mileage (km)", 0, 500000, 50000)
-        fuel_type = st.selectbox("Fuel Type", ["Petrol", "Diesel", "Electric", "Hybrid"])
-        transmission = st.radio("Transmission", ["Manual", "Automatic"])
+df = load_data()
 
-# --- PREDICTION LOGIC ---
-if st.button("Calculate Estimated Price"):
-    with st.spinner('Analyzing market trends...'):
-        time.sleep(1.5)  # Simulate a smooth transition/loading
-        
-        # Mapping inputs for the model (Example logic)
-        # input_data = np.array([[year, mileage, engine_size, ...]])
-        # prediction = model.predict(input_data)
-        
-        # Placeholder calculation
-        base_price = 20000
-        result = base_price + (year - 2000) * 500 - (mileage * 0.05)
-        
-        st.balloons()
-        
-        # --- DISPLAY RESULT ---
-        st.markdown(f"""
-            <div class="prediction-card">
-                <h3 style='color: #31333F;'>Estimated Valuation</h3>
-                <h1 style='color: #FF4B4B;'>${max(0, int(result)):,}</h1>
-                <p style='color: #777;'>Based on current dataset specifications</p>
-            </div>
-            """, unsafe_allow_stdio=True)
+# -------------------------------
+# Title Section
+# -------------------------------
+st.title("🚗 Car Price Prediction App")
+st.markdown("Predict the price of a car using Machine Learning")
 
-# --- FOOTER ---
+st.divider()
+
+# -------------------------------
+# Sidebar Inputs
+# -------------------------------
+st.sidebar.header("⚙️ Enter Car Details")
+
+# NOTE: adjust based on your model features
+year = st.sidebar.slider("Year", 2000, 2025, 2015)
+engine_size = st.sidebar.slider("Engine Size (L)", 1.0, 6.0, 2.0)
+horsepower = st.sidebar.slider("Horsepower", 50, 500, 150)
+mileage = st.sidebar.slider("Mileage (km/l)", 5, 40, 15)
+
+fuel_type = st.sidebar.selectbox("Fuel Type", ["Petrol", "Diesel", "Electric"])
+transmission = st.sidebar.selectbox("Transmission", ["Manual", "Automatic"])
+
+# Encode categorical (simple example)
+fuel_map = {"Petrol": 0, "Diesel": 1, "Electric": 2}
+trans_map = {"Manual": 0, "Automatic": 1}
+
+# -------------------------------
+# Prepare Input Data
+# -------------------------------
+input_data = np.array([[
+    year,
+    engine_size,
+    horsepower,
+    mileage,
+    fuel_map[fuel_type],
+    trans_map[transmission]
+]])
+
+# -------------------------------
+# Prediction Section
+# -------------------------------
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    st.subheader("📊 Prediction Result")
+
+    if st.button("🚀 Predict Price"):
+        prediction = model.predict(input_data)
+
+        st.success(f"💰 Estimated Car Price: ₹ {prediction[0]:,.2f}")
+
+with col2:
+    st.subheader("ℹ️ Model Info")
+    st.info("This model predicts car prices based on specifications like engine, mileage, and more.")
+
+# -------------------------------
+# Data Preview Section
+# -------------------------------
+with st.expander("📂 View Dataset"):
+    st.dataframe(df.head())
+
+# -------------------------------
+# Footer
+# -------------------------------
 st.markdown("---")
-st.caption("Data source: ihasan88/car-price-prediction (Kaggle)")
+st.markdown("Made with ❤️ using Streamlit")
