@@ -32,7 +32,7 @@ def load_data():
     path = kagglehub.dataset_download(
         "ihasan88/car-price-prediction-and-vehicle-specifications"
     )
-    df = pd.read_csv(path + "/CarPrice_Assignment.csv")  # adjust if filename differs
+    df = pd.read_csv(path + "/car_price_dataset.csv")  # adjust if filename differs
     return df
 
 df = load_data()
